@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, invalidateRelease } from "../api/client";
-import type { Level } from "../api/types";
+import type { Channel, Level } from "../api/types";
 import { EntryForm } from "../components/EntryForm";
 import { MarkdownPanel } from "../components/MarkdownPanel";
 import { NoteList } from "../components/NoteList";
@@ -13,6 +13,7 @@ import { errorText } from "../lib/errors";
 import { productSchema, type ProductValues } from "../lib/schemas";
 
 const LEVELS: Level[] = ["patch", "minor", "major"];
+const CHANNELS: Channel[] = ["alpha", "beta", "rc"];
 
 export function ProductPage() {
   const { productId = "" } = useParams();
@@ -47,8 +48,13 @@ export function ProductPage() {
 
   const refresh = () => invalidateRelease(queryClient, productId);
   const bump = useMutation({
-    mutationFn: (level: Level) =>
-      api.products.bump(productId, { level, prerelease: pre.trim().replace(/^-/, "") }),
+    mutationFn: (level: Level | Channel) =>
+      api.products.bump(
+        productId,
+        level === "alpha" || level === "beta" || level === "rc"
+          ? { level }
+          : { level, prerelease: pre.trim().replace(/^-/, "") },
+      ),
     onSuccess: async (version) => {
       setPre("");
       await refresh();
@@ -148,7 +154,7 @@ export function ProductPage() {
           <h2>Cut a version</h2>
           <p className="muted">
             {product.unreleased_count} unreleased {product.unreleased_count === 1 ? "note" : "notes"} will move into
-            the new version. Leave the pre-release label blank for a stable cut.
+            the new version. Leave the pre-release label blank for a stable cut, or step alpha, then beta, then rc.
           </p>
         </div>
         <label className="field pre-field">
@@ -168,6 +174,22 @@ export function ProductPage() {
               {suffix ? `-${suffix}` : ""}
             </button>
           ))}
+        </div>
+        <div className="row wrap">
+          {CHANNELS.map((channel) => {
+            const label = product.next_channels[channel];
+            return (
+              <button
+                key={channel}
+                className="btn btn-ghost"
+                type="button"
+                disabled={bump.isPending || !label}
+                onClick={() => bump.mutate(channel)}
+              >
+                Cut {label ?? channel}
+              </button>
+            );
+          })}
         </div>
         {bump.isError && <p className="error">{errorText(bump.error, "The version could not be cut.")}</p>}
       </section>

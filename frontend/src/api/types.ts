@@ -1,5 +1,7 @@
 export type Level = "major" | "minor" | "patch";
 
+export type Channel = "alpha" | "beta" | "rc";
+
 export type Kind = "added" | "changed" | "fixed" | "removed";
 
 export type Product = {
@@ -10,6 +12,7 @@ export type Product = {
   repository_url: string;
   latest: string | null;
   next_versions: Record<Level, string>;
+  next_channels: Record<Channel, string | null>;
   unreleased_count: number;
   created_at: string;
   updated_at: string;

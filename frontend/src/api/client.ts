@@ -3,6 +3,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
 import type {
   Entry,
+  Channel,
   Kind,
   Level,
   Product,
@@ -91,7 +92,7 @@ export const api = {
     remove: (id: string) => client.delete(`/api/products/${id}/`),
     changelog: (id: string) =>
       client.get<{ markdown: string }>(`/api/products/${id}/changelog/`).then((response) => response.data.markdown),
-    bump: (id: string, body: { level: Level; prerelease?: string }) =>
+    bump: (id: string, body: { level: Level | Channel; prerelease?: string }) =>
       client.post<ReleaseVersion>(`/api/products/${id}/bump/`, body).then((response) => response.data),
   },
   versions: {
