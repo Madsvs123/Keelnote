@@ -100,6 +100,9 @@ class ReleaseApiTests(TestCase):
                 "tests": False,
                 "notes": False,
                 "tag": False,
+                "tests_note": "",
+                "notes_note": "",
+                "tag_note": "",
                 "complete": False,
                 "updated_at": version["checklist"]["updated_at"],
             },
@@ -381,6 +384,26 @@ class ReleaseApiTests(TestCase):
         after = self.client.get(f"/api/products/{product['id']}/unreleased/").json()
         self.assertEqual(after["count"], 0)
         self.assertNotIn("Queue the harbor lights", after["markdown"])
+
+    def test_checklist_items_keep_their_own_notes(self):
+        product = self.make_product(name="Checklist")
+        version = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "patch"}, format="json").json()
+        updated = self.client.patch(
+            f"/api/versions/{version['id']}/checklist/",
+            {
+                "tests": True,
+                "tests_note": "  Suite green on Windows  ",
+                "tag_note": "Annotated tag v0.0.1",
+            },
+            format="json",
+        )
+        self.assertEqual(updated.status_code, 200, updated.content)
+        checklist = updated.json()["checklist"]
+        self.assertTrue(checklist["tests"])
+        self.assertEqual(checklist["tests_note"], "Suite green on Windows")
+        self.assertEqual(checklist["tag_note"], "Annotated tag v0.0.1")
+        self.assertEqual(checklist["notes_note"], "")
+        self.assertFalse(checklist["complete"])
 
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")

@@ -28,6 +28,9 @@ export type Checklist = {
   tests: boolean;
   notes: boolean;
   tag: boolean;
+  tests_note: string;
+  notes_note: string;
+  tag_note: string;
   complete: boolean;
   updated_at: string;
 };

@@ -101,7 +101,12 @@ export const api = {
         .get<ReleaseVersion[]>("/api/versions/", { params: { product: productId } })
         .then((response) => response.data),
     get: (id: string) => client.get<ReleaseVersion>(`/api/versions/${id}/`).then((response) => response.data),
-    updateChecklist: (id: string, body: Partial<Pick<ReleaseVersion["checklist"], "tests" | "notes" | "tag">>) =>
+    updateChecklist: (
+      id: string,
+      body: Partial<
+        Pick<ReleaseVersion["checklist"], "tests" | "notes" | "tag" | "tests_note" | "notes_note" | "tag_note">
+      >,
+    ) =>
       client.patch<ReleaseVersion>(`/api/versions/${id}/checklist/`, body).then((response) => response.data),
     publish: (id: string) =>
       client.post<ReleaseVersion>(`/api/versions/${id}/publish/`).then((response) => response.data),

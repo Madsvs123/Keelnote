@@ -7,17 +7,20 @@ import { formatDay } from "../lib/dates";
 import { errorText } from "../lib/errors";
 
 const ITEMS = [
-  { key: "tests", label: "Tests passed", hint: "The suite you trust is green.", icon: Check },
-  { key: "notes", label: "Notes reviewed", hint: "The changelog says what shipped.", icon: FileText },
-  { key: "tag", label: "Tag created", hint: "The tag matches this version.", icon: Tag },
+  { key: "tests", note: "tests_note", label: "Tests passed", hint: "The suite you trust is green.", icon: Check },
+  { key: "notes", note: "notes_note", label: "Notes reviewed", hint: "The changelog says what shipped.", icon: FileText },
+  { key: "tag", note: "tag_note", label: "Tag created", hint: "The tag matches this version.", icon: Tag },
 ] as const;
 
 export function ChecklistCard({ version, productId }: { version: ReleaseVersion; productId: string }) {
   const queryClient = useQueryClient();
   const published = Boolean(version.released_on);
   const toggle = useMutation({
-    mutationFn: (body: Partial<Pick<ReleaseVersion["checklist"], "tests" | "notes" | "tag">>) =>
-      api.versions.updateChecklist(String(version.id), body),
+    mutationFn: (
+      body: Partial<
+        Pick<ReleaseVersion["checklist"], "tests" | "notes" | "tag" | "tests_note" | "notes_note" | "tag_note">
+      >,
+    ) => api.versions.updateChecklist(String(version.id), body),
     onSuccess: () => invalidateRelease(queryClient, productId, String(version.id)),
   });
   const publish = useMutation({
@@ -39,20 +42,36 @@ export function ChecklistCard({ version, productId }: { version: ReleaseVersion;
         {ITEMS.map((item) => {
           const Icon = item.icon;
           const checked = version.checklist[item.key];
+          const note = version.checklist[item.note];
           return (
-            <button
-              key={item.key}
-              type="button"
-              className={clsx("check", checked && "is-on")}
-              disabled={published || toggle.isPending}
-              onClick={() => toggle.mutate({ [item.key]: !checked })}
-            >
-              <Icon size={16} />
-              <span>
-                <strong>{item.label}</strong>
-                <small>{item.hint}</small>
-              </span>
-            </button>
+            <div key={item.key} className="check-block">
+              <button
+                type="button"
+                className={clsx("check", checked && "is-on")}
+                disabled={published || toggle.isPending}
+                onClick={() => toggle.mutate({ [item.key]: !checked })}
+              >
+                <Icon size={16} />
+                <span>
+                  <strong>{item.label}</strong>
+                  <small>{item.hint}</small>
+                </span>
+              </button>
+              <label className="field">
+                <span>Note</span>
+                <input
+                  key={`${item.note}-${version.checklist.updated_at}`}
+                  defaultValue={note}
+                  maxLength={400}
+                  placeholder="What you checked, in a sentence"
+                  disabled={published || toggle.isPending}
+                  onBlur={(event) => {
+                    const next = event.target.value.trim();
+                    if (next !== note) toggle.mutate({ [item.note]: next });
+                  }}
+                />
+              </label>
+            </div>
           );
         })}
       </div>

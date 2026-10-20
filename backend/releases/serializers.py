@@ -12,8 +12,28 @@ class ChecklistSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ReleaseChecklist
-        fields = ["tests", "notes", "tag", "complete", "updated_at"]
+        fields = [
+            "tests",
+            "notes",
+            "tag",
+            "tests_note",
+            "notes_note",
+            "tag_note",
+            "complete",
+            "updated_at",
+        ]
         read_only_fields = ["updated_at"]
+        extra_kwargs = {
+            "tests_note": {"allow_blank": True, "required": False},
+            "notes_note": {"allow_blank": True, "required": False},
+            "tag_note": {"allow_blank": True, "required": False},
+        }
+
+    def validate(self, attrs):
+        for field in ("tests_note", "notes_note", "tag_note"):
+            if field in attrs and isinstance(attrs[field], str):
+                attrs[field] = " ".join(attrs[field].split())
+        return attrs
 
 
 class VersionSerializer(serializers.ModelSerializer):

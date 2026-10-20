@@ -254,7 +254,8 @@ p { margin: 0; }
   align-items: center;
 }
 .version-row:hover { border-color: #d7b48a; }
-.checks { display: flex; flex-direction: column; gap: 8px; }
+.checks { display: flex; flex-direction: column; gap: 14px; }
+.check-block { display: flex; flex-direction: column; gap: 6px; }
 .check {
   display: flex;
   gap: 12px;

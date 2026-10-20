@@ -113,6 +113,9 @@ class ReleaseChecklist(models.Model):
     tests = models.BooleanField(default=False)
     notes = models.BooleanField(default=False)
     tag = models.BooleanField(default=False)
+    tests_note = models.CharField(max_length=400, blank=True, default="")
+    notes_note = models.CharField(max_length=400, blank=True, default="")
+    tag_note = models.CharField(max_length=400, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     @property
