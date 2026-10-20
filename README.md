@@ -49,7 +49,7 @@ For anything beyond this machine, set `DJANGO_SECRET_KEY` and `DJANGO_DEBUG=0`.
 4. Work through the checklist: tests, notes, and tag.
 5. Publish the version. The markdown changelog uses a Keep a Changelog layout, with your notes and Keelnote's own section text.
 6. If a published version should not be used, yank it. The version and its notes stay in the log, marked yanked, with the reason you give.
-7. Compare two versions to see which notes are only on one side and which they share. A note can be flagged as a breaking change.
+7. Compare two versions to see which notes are only on one side and which they share. A note can be flagged as a breaking change. Keelnote suggests the next stable version from the unreleased kinds, lints notes for a missing kind or an empty summary, and can export every version as one markdown file. Note templates fill in a starting sentence.
 
 Cutting a patch from a pre-release promotes it to the stable version of that same core number. For example, `1.2.0-rc.1` becomes `1.2.0`.
 

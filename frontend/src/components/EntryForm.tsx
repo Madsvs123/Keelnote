@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { api } from "../api/client";
+import type { Kind } from "../api/types";
 import { errorText } from "../lib/errors";
 import { KIND_ORDER, KIND_META } from "../lib/kinds";
 import { entrySchema, type EntryValues } from "../lib/schemas";
@@ -18,6 +19,10 @@ export function EntryForm({
   const form = useForm<EntryValues>({
     resolver: zodResolver(entrySchema),
     defaultValues: { kind: "added", text: "", breaking: false },
+  });
+  const templates = useQuery({
+    queryKey: ["templates"],
+    queryFn: () => api.templates.list(),
   });
   const mutation = useMutation({
     mutationFn: (values: EntryValues) =>
@@ -37,6 +42,28 @@ export function EntryForm({
 
   return (
     <form className="stack" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+      <label className="field">
+        <span>Template</span>
+        <select
+          defaultValue=""
+          onChange={(event) => {
+            const key = event.target.value;
+            const template = templates.data?.find((item) => (item.builtin ? item.slug : `saved-${item.id}`) === key);
+            if (!template) return;
+            form.setValue("kind", template.kind as Kind, { shouldValidate: true });
+            form.setValue("text", template.body, { shouldValidate: true });
+            event.target.value = "";
+          }}
+        >
+          <option value="">Start from a template</option>
+          {templates.data?.map((template) => (
+            <option key={template.builtin ? template.slug : template.id} value={template.builtin ? template.slug : `saved-${template.id}`}>
+              {template.name}
+              {template.builtin ? "" : " (saved)"}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="form-grid">
         <label className="field">
           <span>Kind</span>

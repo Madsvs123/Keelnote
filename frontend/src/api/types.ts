@@ -62,6 +62,31 @@ export type Entry = {
   created_at: string;
 };
 
+export type Suggestion = {
+  level: Level;
+  label: string;
+  reason: string;
+  note_count: number;
+  breaking: boolean;
+};
+
+export type LintIssue = {
+  code: "missing_kind" | "empty_summary";
+  message: string;
+  index: number;
+  entry?: number;
+};
+
+export type NoteTemplate = {
+  id: number | null;
+  slug: string;
+  name: string;
+  kind: Kind;
+  body: string;
+  builtin: boolean;
+  created_at?: string;
+};
+
 export type SessionPayload = {
   id?: number;
   username: string;

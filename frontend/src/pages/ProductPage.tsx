@@ -23,6 +23,7 @@ export function ProductPage() {
   const [editing, setEditing] = useState(false);
   const [leftId, setLeftId] = useState("");
   const [rightId, setRightId] = useState("");
+  const [search, setSearch] = useState("");
   const productQuery = useQuery({
     queryKey: ["product", productId],
     queryFn: () => api.products.get(productId),
@@ -43,6 +44,22 @@ export function ProductPage() {
     queryKey: ["compare", productId, leftId, rightId],
     queryFn: () => api.products.compare(productId, leftId, rightId),
     enabled: Boolean(leftId && rightId && leftId !== rightId),
+  });
+  const suggestQuery = useQuery({
+    queryKey: ["suggest", productId],
+    queryFn: () => api.products.suggest(productId),
+  });
+  const lintQuery = useQuery({
+    queryKey: ["lint", productId],
+    queryFn: () => api.products.lint(productId),
+  });
+  const searchQuery = useQuery({
+    queryKey: ["entries", productId, "search", search.trim()],
+    queryFn: () => api.entries.list({ product: productId, q: search.trim() }),
+    enabled: search.trim().length > 0,
+  });
+  const downloadExport = useMutation({
+    mutationFn: () => api.products.downloadExport(productId, productQuery.data?.slug || "changelog"),
   });
   const form = useForm<ProductValues>({
     resolver: zodResolver(productSchema),
@@ -155,6 +172,68 @@ export function ProductPage() {
           </div>
         </form>
       )}
+
+      {suggestQuery.data && (
+        <section className="card stack">
+          <div className="card-head">
+            <h2>Suggested cut</h2>
+            <span className="badge badge-draft">{suggestQuery.data.label}</span>
+          </div>
+          <p className="muted">{suggestQuery.data.reason}</p>
+          <div className="row">
+            <button
+              className="btn btn-brass"
+              type="button"
+              disabled={bump.isPending}
+              onClick={() => bump.mutate(suggestQuery.data.level)}
+            >
+              Cut {suggestQuery.data.label}
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="card stack">
+        <div className="card-head">
+          <h2>Release desk</h2>
+          <button
+            className="btn btn-ghost btn-tiny"
+            type="button"
+            disabled={downloadExport.isPending}
+            onClick={() => downloadExport.mutate()}
+          >
+            Export markdown
+          </button>
+        </div>
+        <p className="muted">
+          {lintQuery.data?.ok
+            ? "Lint is clean. Every stored note has a kind and a summary."
+            : "Lint checks stored notes for a missing kind or an empty summary."}
+        </p>
+        {lintQuery.data && !lintQuery.data.ok && (
+          <ul className="issue-list">
+            {lintQuery.data.issues.map((issue) => (
+              <li key={`${issue.code}-${issue.index}-${issue.entry ?? "new"}`}>
+                {issue.message}
+                {issue.entry ? ` (note ${issue.entry})` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
+        {downloadExport.isError && (
+          <p className="error">{errorText(downloadExport.error, "The export could not be downloaded.")}</p>
+        )}
+        <label className="field">
+          <span>Search notes</span>
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search this product's notes"
+          />
+        </label>
+        {search.trim() && searchQuery.isLoading && <p className="muted">Searching…</p>}
+        {search.trim() && searchQuery.data && <NoteList entries={searchQuery.data} onChanged={refresh} />}
+      </section>
 
       <section className="card bump">
         <div>

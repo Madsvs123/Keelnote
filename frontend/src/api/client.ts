@@ -2,14 +2,17 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import type { QueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store/auth";
 import type {
-  Entry,
   Channel,
+  Entry,
   Kind,
   Level,
+  LintIssue,
+  NoteTemplate,
   Product,
   ProductInput,
   ReleaseVersion,
   SessionPayload,
+  Suggestion,
 } from "./types";
 
 export const apiBase = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
@@ -76,6 +79,8 @@ export function invalidateRelease(queryClient: QueryClient, productId: string, v
     queryClient.invalidateQueries({ queryKey: ["versions", productId] }),
     queryClient.invalidateQueries({ queryKey: ["changelog", productId] }),
     queryClient.invalidateQueries({ queryKey: ["compare", productId] }),
+    queryClient.invalidateQueries({ queryKey: ["suggest", productId] }),
+    queryClient.invalidateQueries({ queryKey: ["lint", productId] }),
   ];
   if (versionId) {
     jobs.push(queryClient.invalidateQueries({ queryKey: ["version", versionId] }));
@@ -101,6 +106,23 @@ export const api = {
           params: { left, right },
         })
         .then((response) => response.data),
+    suggest: (id: string) => client.get<Suggestion>(`/api/products/${id}/suggest/`).then((response) => response.data),
+    lint: (id: string) =>
+      client
+        .get<{ ok: boolean; issues: LintIssue[] }>(`/api/products/${id}/lint/`)
+        .then((response) => response.data),
+    downloadExport: async (id: string, slug: string) => {
+      const response = await client.get<Blob>(`/api/products/${id}/export/`, { responseType: "blob" });
+      const url = URL.createObjectURL(response.data);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${slug}-changelog.md`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    },
+  },
+  templates: {
+    list: () => client.get<NoteTemplate[]>("/api/templates/").then((response) => response.data),
   },
   versions: {
     list: (productId: string) =>
