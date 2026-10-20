@@ -249,6 +249,9 @@ class EntryViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(version__isnull=True)
         elif version_id:
             queryset = queryset.filter(version_id=version_id)
+        query = self.request.query_params.get("q", "")
+        if isinstance(query, str) and query.strip():
+            queryset = queryset.filter(text__icontains=query.strip())
         return queryset
 
     def get_serializer_class(self):

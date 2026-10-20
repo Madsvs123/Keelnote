@@ -422,6 +422,22 @@ class ReleaseApiTests(TestCase):
         self.assertIn("- Adjust the wording", preview)
         self.assertNotIn("**Breaking.** Adjust", preview)
 
+    def test_search_matches_note_text_for_the_signed_in_maintainer(self):
+        product = self.make_product(name="Search")
+        other = self.make_product(name="Other")
+        self.add_note(product["id"], "Queue the harbor lights")
+        self.add_note(product["id"], "Repair the tag writer", "fixed")
+        self.add_note(other["id"], "Harbor lights on the other product")
+        found = self.client.get("/api/entries/", {"product": product["id"], "q": "HARBOR"}).json()
+        self.assertEqual([item["text"] for item in found], ["Queue the harbor lights"])
+        anywhere = self.client.get("/api/entries/", {"q": "harbor"}).json()
+        self.assertEqual(len(anywhere), 2)
+        self.assertEqual(self.client.get("/api/entries/", {"product": product["id"], "q": "missing"}).json(), [])
+
+        stranger = APIClient()
+        stranger.force_authenticate(self.other)
+        self.assertEqual(stranger.get("/api/entries/", {"q": "harbor"}).json(), [])
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")
