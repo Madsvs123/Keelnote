@@ -6,12 +6,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .lint import lint_notes
-from .models import ChangelogEntry, Product, Version
+from .models import ChangelogEntry, NoteTemplate, Product, Version
+from .note_templates import built_in_payload
 from .permissions import OwnsProduct
 from .serializers import (
     ChecklistSerializer,
     EntrySerializer,
     EntryWriteSerializer,
+    NoteTemplateSerializer,
     ProductSerializer,
     ProductWriteSerializer,
     VersionSerializer,
@@ -25,6 +27,35 @@ def visible_versions(user):
         .select_related("checklist", "product")
         .annotate(note_count=Count("entries"))
     )
+
+
+class NoteTemplateViewSet(viewsets.ModelViewSet):
+    serializer_class = NoteTemplateSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "post", "delete", "head", "options"]
+
+    def get_queryset(self):
+        return NoteTemplate.objects.filter(owner=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        saved = self.get_serializer(self.get_queryset(), many=True).data
+        return Response([*built_in_payload(), *saved])
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                self.perform_create(serializer)
+        except IntegrityError:
+            return Response(
+                {"detail": "You already have a template with that name."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ProductViewSet(viewsets.ModelViewSet):

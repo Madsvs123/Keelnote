@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ChangelogEntry, Product, ReleaseChecklist, Version
+from .models import ChangelogEntry, NoteTemplate, Product, ReleaseChecklist, Version
 
 
 @admin.register(Product)
@@ -18,6 +18,12 @@ class VersionAdmin(admin.ModelAdmin):
 @admin.register(ChangelogEntry)
 class ChangelogEntryAdmin(admin.ModelAdmin):
     list_display = ("product", "kind", "version", "created_at")
+    list_filter = ("kind",)
+
+
+@admin.register(NoteTemplate)
+class NoteTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "owner", "kind", "created_at")
     list_filter = ("kind",)
 
 

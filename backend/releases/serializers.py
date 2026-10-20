@@ -2,7 +2,7 @@ from urllib.parse import urlsplit
 
 from rest_framework import serializers
 
-from .models import ChangelogEntry, Product, ReleaseChecklist, Version
+from .models import ChangelogEntry, NoteTemplate, Product, ReleaseChecklist, Version
 from .semver import InvalidVersion
 from .services import version_base
 
@@ -116,6 +116,36 @@ class ProductSerializer(serializers.ModelSerializer):
             except InvalidVersion:
                 labels[channel] = None
         return labels
+
+
+class NoteTemplateSerializer(serializers.ModelSerializer):
+    builtin = serializers.SerializerMethodField()
+    slug = serializers.SerializerMethodField()
+
+    class Meta:
+        model = NoteTemplate
+        fields = ["id", "slug", "name", "kind", "body", "builtin", "created_at"]
+        read_only_fields = ["created_at"]
+
+    def get_builtin(self, obj: NoteTemplate) -> bool:
+        return False
+
+    def get_slug(self, obj: NoteTemplate) -> str:
+        return ""
+
+    def validate_name(self, value: str) -> str:
+        cleaned = " ".join(value.split())
+        if len(cleaned) < 2:
+            raise serializers.ValidationError("Use at least 2 characters.")
+        return cleaned
+
+    def validate_body(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Write the template body.")
+        if len(cleaned) > 2000:
+            raise serializers.ValidationError("Keep the template under 2000 characters.")
+        return cleaned
 
 
 class EntrySerializer(serializers.ModelSerializer):

@@ -324,6 +324,44 @@ class ReleaseApiTests(TestCase):
         rejected = self.client.post(f"/api/products/{product['id']}/lint/", {"notes": "nope"}, format="json")
         self.assertEqual(rejected.status_code, 400)
 
+    def test_note_templates_include_builtins_and_saved_wording(self):
+        listed = self.client.get("/api/templates/")
+        self.assertEqual(listed.status_code, 200, listed.content)
+        builtins = [item for item in listed.json() if item["builtin"]]
+        self.assertEqual(
+            [item["slug"] for item in builtins],
+            ["added-behavior", "changed-behavior", "fixed-defect", "removed-behavior"],
+        )
+        self.assertTrue(all(item["body"] and item["kind"] for item in builtins))
+
+        saved = self.client.post(
+            "/api/templates/",
+            {"name": "Tag reminder", "kind": "changed", "body": "Retarget the tag to {commit}."},
+            format="json",
+        )
+        self.assertEqual(saved.status_code, 201, saved.content)
+        self.assertFalse(saved.json()["builtin"])
+        self.assertEqual(saved.json()["name"], "Tag reminder")
+
+        empty = self.client.post(
+            "/api/templates/",
+            {"name": "Blank", "kind": "fixed", "body": "  "},
+            format="json",
+        )
+        self.assertEqual(empty.status_code, 400)
+
+        again = self.client.get("/api/templates/").json()
+        self.assertEqual(again[-1]["name"], "Tag reminder")
+
+        stranger = APIClient()
+        stranger.force_authenticate(self.other)
+        hidden = stranger.get("/api/templates/").json()
+        self.assertTrue(all(item["builtin"] for item in hidden))
+        self.assertEqual(stranger.delete(f"/api/templates/{saved.json()['id']}/").status_code, 404)
+
+        removed = self.client.delete(f"/api/templates/{saved.json()['id']}/")
+        self.assertEqual(removed.status_code, 204)
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

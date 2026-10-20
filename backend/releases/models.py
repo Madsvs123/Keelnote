@@ -87,6 +87,27 @@ class ChangelogEntry(models.Model):
         return f"{self.kind}: {self.text[:48]}"
 
 
+class NoteTemplate(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="note_templates",
+    )
+    name = models.CharField(max_length=80)
+    kind = models.CharField(max_length=16, choices=ChangelogEntry.Kind.choices)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "name"], name="unique_template_name_per_owner"),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class ReleaseChecklist(models.Model):
     version = models.OneToOneField(Version, on_delete=models.CASCADE, related_name="checklist")
     tests = models.BooleanField(default=False)
