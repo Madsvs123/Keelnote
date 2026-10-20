@@ -68,6 +68,46 @@ def render_changelog(
     return "\n".join(lines).rstrip() + "\n"
 
 
+def compare_notes(left_label: str, right_label: str, left: Sequence[Note], right: Sequence[Note]) -> str:
+    """Markdown diff of the notes on two versions."""
+    from collections import Counter
+
+    def key(note: Note) -> tuple[str, str, bool]:
+        return (note.kind, " ".join(note.text.split()), bool(note.breaking))
+
+    left_counts = Counter(key(note) for note in left)
+    right_counts = Counter(key(note) for note in right)
+    examples: dict[tuple[str, str, bool], Note] = {}
+    for note in [*left, *right]:
+        examples.setdefault(key(note), note)
+
+    only_left: list[Note] = []
+    only_right: list[Note] = []
+    shared: list[Note] = []
+    for identity, sample in examples.items():
+        common = min(left_counts[identity], right_counts[identity])
+        shared.extend([sample] * common)
+        only_left.extend([sample] * (left_counts[identity] - common))
+        only_right.extend([sample] * (right_counts[identity] - common))
+
+    lines = [
+        f"# Compare {left_label} and {right_label}",
+        "",
+        f"Notes that differ between {left_label} and {right_label}. A match shares the kind, the summary, and the breaking flag.",
+        "",
+    ]
+    lines.extend(_compare_section(f"Only in {right_label}", only_right))
+    lines.extend(_compare_section(f"Only in {left_label}", only_left))
+    lines.extend(_compare_section("In both", shared))
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _compare_section(title: str, notes: Sequence[Note]) -> list[str]:
+    lines = [f"## {title}", ""]
+    lines.extend(_render_notes(notes, "No notes in this set."))
+    return lines
+
+
 def render_unreleased(product_name: str, notes: Sequence[Note]) -> str:
     """Preview only the notes that have not been cut into a version."""
     safe_name = " ".join(product_name.split()) or "this project"

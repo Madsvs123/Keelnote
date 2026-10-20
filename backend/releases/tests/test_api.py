@@ -488,6 +488,37 @@ class ReleaseApiTests(TestCase):
         self.assertIn("- Still waiting", text)
         self.assertEqual(text.count("# Changelog"), 1)
 
+    def test_compare_two_versions_as_markdown(self):
+        product = self.make_product(name="Compare")
+        self.add_note(product["id"], "Queue the public feed")
+        self.add_note(product["id"], "Correct the draft tag", "fixed")
+        left = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "minor"}, format="json").json()
+        self.add_note(product["id"], "Drop the old flag", "changed", breaking=True)
+        right = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "minor"}, format="json").json()
+
+        compared = self.client.get(
+            f"/api/products/{product['id']}/compare/",
+            {"left": left["id"], "right": right["id"]},
+        )
+        self.assertEqual(compared.status_code, 200, compared.content)
+        body = compared.json()
+        self.assertEqual(body["left"], "0.1.0")
+        self.assertEqual(body["right"], "0.2.0")
+        self.assertIn("# Compare 0.1.0 and 0.2.0", body["markdown"])
+        self.assertIn("- **Breaking.** Drop the old flag", body["markdown"])
+        only_old = body["markdown"].split("## Only in 0.1.0", 1)[1].split("## In both", 1)[0]
+        self.assertIn("- Queue the public feed", only_old)
+        self.assertIn("- Correct the draft tag", only_old)
+        self.assertIn("No notes in this set.", body["markdown"].split("## In both", 1)[1])
+
+        same = self.client.get(
+            f"/api/products/{product['id']}/compare/",
+            {"left": left["id"], "right": left["id"]},
+        )
+        self.assertEqual(same.status_code, 400)
+        missing = self.client.get(f"/api/products/{product['id']}/compare/", {"left": "nope", "right": right["id"]})
+        self.assertEqual(missing.status_code, 400)
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

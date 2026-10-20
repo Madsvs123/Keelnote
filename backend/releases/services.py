@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .markdown import Note, VersionBlock, render_changelog, render_unreleased
+from .markdown import Note, VersionBlock, compare_notes, render_changelog, render_unreleased
 from .models import ChangelogEntry, Product, Version
 from .semver import CHANNELS, InvalidVersion, SemVer
 
@@ -154,6 +154,21 @@ def build_unreleased(product: Product) -> tuple[str, int]:
     entries = list(product.entries.filter(version__isnull=True).order_by("created_at", "id"))
     notes = [Note(entry.kind, entry.text, entry.breaking) for entry in entries]
     return render_unreleased(product.name, notes), len(notes)
+
+
+def compare_versions(left: Version, right: Version) -> str:
+    if left.product_id != right.product_id:
+        raise ReleaseError("Compare two versions of the same product.")
+    if left.pk == right.pk:
+        raise ReleaseError("Choose two different versions.")
+
+    def notes_for(version: Version) -> list[Note]:
+        return [
+            Note(entry.kind, entry.text, entry.breaking)
+            for entry in version.entries.order_by("created_at", "id")
+        ]
+
+    return compare_notes(left.label, right.label, notes_for(left), notes_for(right))
 
 
 def build_export(product: Product) -> str:

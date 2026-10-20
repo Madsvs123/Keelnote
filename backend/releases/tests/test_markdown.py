@@ -2,7 +2,7 @@ from datetime import date
 
 from django.test import SimpleTestCase
 
-from releases.markdown import KIND_ORDER, Note, VersionBlock, render_changelog, render_unreleased
+from releases.markdown import KIND_ORDER, Note, VersionBlock, compare_notes, render_changelog, render_unreleased
 from releases.models import ChangelogEntry
 
 
@@ -112,6 +112,41 @@ class MarkdownTests(SimpleTestCase):
         self.assertNotIn("## [1.", text)
         empty = render_unreleased("Harbor", [])
         self.assertIn("_Nothing is waiting in the unreleased bucket._", empty)
+
+    def test_compare_splits_notes_that_are_unique_or_shared(self):
+        text = compare_notes(
+            "1.0.0",
+            "1.1.0",
+            [
+                Note("added", "Queue the public feed"),
+                Note("fixed", "Correct the draft tag"),
+            ],
+            [
+                Note("added", "Queue the public feed"),
+                Note("changed", "Drop the old flag", True),
+            ],
+        )
+        only_new = text.split("## Only in 1.0.0")[0]
+        self.assertIn("## Only in 1.1.0", only_new)
+        self.assertIn("- **Breaking.** Drop the old flag", only_new)
+        self.assertNotIn("Queue the public feed", only_new)
+        only_old = text.split("## Only in 1.0.0")[1].split("## In both")[0]
+        self.assertIn("- Correct the draft tag", only_old)
+        shared = text.split("## In both")[1]
+        self.assertIn("- Queue the public feed", shared)
+        self.assertNotIn("Drop the old flag", shared)
+
+    def test_breaking_flag_keeps_otherwise_equal_notes_apart(self):
+        text = compare_notes(
+            "1.0.0",
+            "1.1.0",
+            [Note("changed", "Drop the old flag", False)],
+            [Note("changed", "Drop the old flag", True)],
+        )
+        self.assertIn("## Only in 1.1.0", text)
+        self.assertIn("- **Breaking.** Drop the old flag", text)
+        self.assertIn("## Only in 1.0.0", text)
+        self.assertIn("_No notes in this set._", text.split("## In both")[1])
 
     def test_unknown_kind_is_rejected(self):
         with self.assertRaises(ValueError):

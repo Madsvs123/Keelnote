@@ -24,6 +24,7 @@ from .services import (
     build_changelog,
     build_export,
     build_unreleased,
+    compare_versions,
     cut_release,
     publish_version,
     suggest_next,
@@ -143,6 +144,23 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         markdown, count = build_unreleased(product)
         return Response({"markdown": markdown, "count": count})
+
+    @action(detail=True, methods=["get"])
+    def compare(self, request, pk=None):
+        product = self.get_object()
+        try:
+            left = product.versions.get(pk=int(request.query_params.get("left", "")))
+            right = product.versions.get(pk=int(request.query_params.get("right", "")))
+        except (TypeError, ValueError, Version.DoesNotExist):
+            return Response(
+                {"detail": "Choose two versions of this product."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            markdown = compare_versions(left, right)
+        except ReleaseError as exc:
+            return Response({"detail": str(exc)}, status=exc.status)
+        return Response({"markdown": markdown, "left": left.label, "right": right.label})
 
     @action(detail=True, methods=["get"])
     def export(self, request, pk=None):
