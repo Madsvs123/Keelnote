@@ -31,6 +31,14 @@ Open http://127.0.0.1:5173 and register a maintainer account. The API listens on
 
 Optional: `.\.venv\Scripts\python manage.py createsuperuser`, then visit http://127.0.0.1:8000/admin/.
 
+Add a note without opening the app:
+
+```powershell
+.\.venv\Scripts\python manage.py addnote --username keeper --product harbor --kind fixed --text "Repair the tag writer"
+```
+
+Pass `--release 0.1.0` to attach the note to a version that already exists. Leave `--release` off and the note stays in the unreleased bucket.
+
 For anything beyond this machine, set `DJANGO_SECRET_KEY` and `DJANGO_DEBUG=0`.
 
 ## How a release works
