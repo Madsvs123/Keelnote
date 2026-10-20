@@ -32,6 +32,8 @@ class VersionSerializer(serializers.ModelSerializer):
             "patch",
             "prerelease",
             "released_on",
+            "yanked_on",
+            "yank_reason",
             "checklist",
             "note_count",
             "created_at",

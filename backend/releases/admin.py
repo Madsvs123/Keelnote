@@ -11,8 +11,8 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(Version)
 class VersionAdmin(admin.ModelAdmin):
-    list_display = ("product", "major", "minor", "patch", "prerelease", "released_on")
-    list_filter = ("released_on",)
+    list_display = ("product", "major", "minor", "patch", "prerelease", "released_on", "yanked_on")
+    list_filter = ("released_on", "yanked_on")
 
 
 @admin.register(ChangelogEntry)

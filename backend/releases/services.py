@@ -91,6 +91,23 @@ def cut_release(product: Product, level: str, prerelease: str = "") -> Version:
     return version
 
 
+def yank_version(version: Version, reason: str) -> Version:
+    """Withdraw a published version and keep every note attached to it."""
+    if version.released_on is None:
+        raise ReleaseError("Only a published version can be yanked.")
+    if version.yanked_on is not None:
+        raise ReleaseError("This version is already yanked.", 409)
+    cleaned = " ".join(reason.split())
+    if len(cleaned) < 3:
+        raise ReleaseError("Say why this version is yanked.")
+    if len(cleaned) > 280:
+        raise ReleaseError("Keep the yank reason under 280 characters.")
+    version.yanked_on = timezone.localdate()
+    version.yank_reason = cleaned
+    version.save(update_fields=["yanked_on", "yank_reason"])
+    return version
+
+
 def publish_version(version: Version) -> Version:
     if version.released_on is not None:
         raise ReleaseError("This version is already published.", 409)

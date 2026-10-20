@@ -15,7 +15,7 @@ from .serializers import (
     ProductWriteSerializer,
     VersionSerializer,
 )
-from .services import ReleaseError, build_changelog, cut_release, publish_version, unique_slug
+from .services import ReleaseError, build_changelog, cut_release, publish_version, unique_slug, yank_version
 
 
 def visible_versions(user):
@@ -147,6 +147,19 @@ class VersionViewSet(
         version = self.get_object()
         try:
             publish_version(version)
+        except ReleaseError as exc:
+            return Response({"detail": str(exc)}, status=exc.status)
+        version = visible_versions(request.user).get(pk=version.pk)
+        return Response(self.get_serializer(version).data)
+
+    @action(detail=True, methods=["post"])
+    def yank(self, request, pk=None):
+        version = self.get_object()
+        reason = request.data.get("reason", "")
+        if not isinstance(reason, str):
+            return Response({"detail": "The yank reason must be text."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            yank_version(version, reason)
         except ReleaseError as exc:
             return Response({"detail": str(exc)}, status=exc.status)
         version = visible_versions(request.user).get(pk=version.pk)

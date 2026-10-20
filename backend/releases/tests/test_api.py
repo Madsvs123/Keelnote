@@ -235,6 +235,68 @@ class ReleaseApiTests(TestCase):
         self.assertEqual(rc.json()["label"], "0.0.1-rc.1")
         self.assertEqual(rc.json()["note_count"], 1)
 
+    def publish(self, version_id):
+        for field in ("tests", "notes", "tag"):
+            checked = self.client.patch(
+                f"/api/versions/{version_id}/checklist/",
+                {field: True},
+                format="json",
+            )
+            self.assertEqual(checked.status_code, 200, checked.content)
+        published = self.client.post(f"/api/versions/{version_id}/publish/")
+        self.assertEqual(published.status_code, 200, published.content)
+        return published.json()
+
+    def test_yank_keeps_the_notes_on_the_published_version(self):
+        product = self.make_product(name="Mooring")
+        note = self.add_note(product["id"], "Tighten the stern line", "fixed")
+        version = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "patch"}, format="json").json()
+        draft = self.client.post(
+            f"/api/versions/{version['id']}/yank/",
+            {"reason": "Too early"},
+            format="json",
+        )
+        self.assertEqual(draft.status_code, 400)
+
+        self.publish(version["id"])
+        missing = self.client.post(f"/api/versions/{version['id']}/yank/", {"reason": "  "}, format="json")
+        self.assertEqual(missing.status_code, 400)
+
+        yanked = self.client.post(
+            f"/api/versions/{version['id']}/yank/",
+            {"reason": "The tag points at the wrong commit"},
+            format="json",
+        )
+        self.assertEqual(yanked.status_code, 200, yanked.content)
+        body = yanked.json()
+        self.assertEqual(body["yank_reason"], "The tag points at the wrong commit")
+        self.assertEqual(body["yanked_on"], timezone.localdate().isoformat())
+        self.assertEqual(body["note_count"], 1)
+        self.assertIsNotNone(body["released_on"])
+
+        kept = self.client.get("/api/entries/", {"product": product["id"], "version": version["id"]}).json()
+        self.assertEqual(kept[0]["id"], note["id"])
+        self.assertEqual(kept[0]["text"], "Tighten the stern line")
+        self.assertEqual(kept[0]["version"], version["id"])
+
+        again = self.client.post(
+            f"/api/versions/{version['id']}/yank/",
+            {"reason": "Already withdrawn"},
+            format="json",
+        )
+        self.assertEqual(again.status_code, 409)
+        removed = self.client.delete(f"/api/versions/{version['id']}/")
+        self.assertEqual(removed.status_code, 409)
+
+        stranger = APIClient()
+        stranger.force_authenticate(self.other)
+        hidden = stranger.post(
+            f"/api/versions/{version['id']}/yank/",
+            {"reason": "Not your release"},
+            format="json",
+        )
+        self.assertEqual(hidden.status_code, 404)
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

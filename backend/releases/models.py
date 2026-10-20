@@ -34,6 +34,8 @@ class Version(models.Model):
     patch = models.PositiveIntegerField()
     prerelease = models.CharField(max_length=64, blank=True, default="")
     released_on = models.DateField(null=True, blank=True)
+    yanked_on = models.DateField(null=True, blank=True)
+    yank_reason = models.CharField(max_length=280, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
