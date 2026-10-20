@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .lint import lint_notes
 from .models import ChangelogEntry, Product, Version
 from .permissions import OwnsProduct
 from .serializers import (
@@ -71,6 +72,24 @@ class ProductViewSet(viewsets.ModelViewSet):
         self.perform_update(serializer)
         product = self.get_queryset().get(pk=instance.pk)
         return Response(ProductSerializer(product).data)
+
+    @action(detail=True, methods=["get", "post"])
+    def lint(self, request, pk=None):
+        product = self.get_object()
+        if request.method == "POST":
+            notes = request.data.get("notes")
+            if not isinstance(notes, list) or any(not isinstance(item, dict) for item in notes):
+                return Response(
+                    {"detail": "Send notes as a list of objects."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            notes = [
+                {"id": entry.id, "kind": entry.kind, "text": entry.text}
+                for entry in product.entries.order_by("created_at", "id")
+            ]
+        issues = [issue.as_dict() for issue in lint_notes(notes)]
+        return Response({"ok": not issues, "issues": issues})
 
     @action(detail=True, methods=["get"])
     def changelog(self, request, pk=None):

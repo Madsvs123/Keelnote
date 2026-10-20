@@ -3,6 +3,8 @@ from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
+from releases.models import ChangelogEntry
+
 
 class ReleaseApiTests(TestCase):
     def setUp(self):
@@ -296,6 +298,31 @@ class ReleaseApiTests(TestCase):
             format="json",
         )
         self.assertEqual(hidden.status_code, 404)
+
+    def test_lint_endpoint_flags_empty_summaries_and_missing_kinds(self):
+        product = self.make_product(name="Lint")
+        self.add_note(product["id"], "Queue the harbor lights")
+        clean = self.client.get(f"/api/products/{product['id']}/lint/")
+        self.assertEqual(clean.status_code, 200, clean.content)
+        self.assertTrue(clean.json()["ok"])
+        self.assertEqual(clean.json()["issues"], [])
+
+        ChangelogEntry.objects.create(product_id=product["id"], kind="fixed", text="   ")
+        stored = self.client.get(f"/api/products/{product['id']}/lint/")
+        self.assertFalse(stored.json()["ok"])
+        self.assertEqual(stored.json()["issues"][0]["code"], "empty_summary")
+
+        proposed = self.client.post(
+            f"/api/products/{product['id']}/lint/",
+            {"notes": [{"text": "No kind here"}, {"kind": "added", "text": "Fine"}]},
+            format="json",
+        )
+        self.assertEqual(proposed.status_code, 200, proposed.content)
+        self.assertEqual([issue["code"] for issue in proposed.json()["issues"]], ["missing_kind"])
+        self.assertEqual(proposed.json()["issues"][0]["index"], 0)
+
+        rejected = self.client.post(f"/api/products/{product['id']}/lint/", {"notes": "nope"}, format="json")
+        self.assertEqual(rejected.status_code, 400)
 
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
