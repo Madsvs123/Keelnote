@@ -18,7 +18,15 @@ from .serializers import (
     ProductWriteSerializer,
     VersionSerializer,
 )
-from .services import ReleaseError, build_changelog, cut_release, publish_version, unique_slug, yank_version
+from .services import (
+    ReleaseError,
+    build_changelog,
+    build_unreleased,
+    cut_release,
+    publish_version,
+    unique_slug,
+    yank_version,
+)
 
 
 def visible_versions(user):
@@ -121,6 +129,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             ]
         issues = [issue.as_dict() for issue in lint_notes(notes)]
         return Response({"ok": not issues, "issues": issues})
+
+    @action(detail=True, methods=["get"])
+    def unreleased(self, request, pk=None):
+        product = self.get_object()
+        markdown, count = build_unreleased(product)
+        return Response({"markdown": markdown, "count": count})
 
     @action(detail=True, methods=["get"])
     def changelog(self, request, pk=None):

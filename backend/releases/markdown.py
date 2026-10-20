@@ -67,6 +67,21 @@ def render_changelog(
     return "\n".join(lines).rstrip() + "\n"
 
 
+def render_unreleased(product_name: str, notes: Sequence[Note]) -> str:
+    """Preview only the notes that have not been cut into a version."""
+    safe_name = " ".join(product_name.split()) or "this project"
+    lines = [
+        f"# Unreleased changes to {safe_name}",
+        "",
+        "These notes have not been cut into a version yet.",
+        "",
+        "## [Unreleased]",
+        "",
+    ]
+    lines.extend(_render_notes(notes, "Nothing is waiting in the unreleased bucket."))
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _render_notes(notes: Sequence[Note], empty: str) -> list[str]:
     buckets: dict[str, list[str]] = {kind: [] for kind in KIND_ORDER}
     for note in notes:

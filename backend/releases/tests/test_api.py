@@ -362,6 +362,26 @@ class ReleaseApiTests(TestCase):
         removed = self.client.delete(f"/api/templates/{saved.json()['id']}/")
         self.assertEqual(removed.status_code, 204)
 
+    def test_unreleased_preview_lists_only_notes_waiting_to_be_cut(self):
+        product = self.make_product(name="Preview")
+        empty = self.client.get(f"/api/products/{product['id']}/unreleased/")
+        self.assertEqual(empty.status_code, 200, empty.content)
+        self.assertEqual(empty.json()["count"], 0)
+        self.assertIn("Nothing is waiting", empty.json()["markdown"])
+
+        self.add_note(product["id"], "Queue the harbor lights", "added")
+        self.add_note(product["id"], "Repair the tag writer", "fixed")
+        preview = self.client.get(f"/api/products/{product['id']}/unreleased/").json()
+        self.assertEqual(preview["count"], 2)
+        self.assertIn("- Queue the harbor lights", preview["markdown"])
+        self.assertIn("### Fixed", preview["markdown"])
+        self.assertNotIn("## [0.", preview["markdown"])
+
+        self.client.post(f"/api/products/{product['id']}/bump/", {"level": "patch"}, format="json")
+        after = self.client.get(f"/api/products/{product['id']}/unreleased/").json()
+        self.assertEqual(after["count"], 0)
+        self.assertNotIn("Queue the harbor lights", after["markdown"])
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

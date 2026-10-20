@@ -6,7 +6,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from .markdown import Note, VersionBlock, render_changelog
+from .markdown import Note, VersionBlock, render_changelog, render_unreleased
 from .models import ChangelogEntry, Product, Version
 from .semver import CHANNELS, InvalidVersion, SemVer
 
@@ -118,6 +118,12 @@ def publish_version(version: Version) -> Version:
     version.released_on = timezone.localdate()
     version.save(update_fields=["released_on"])
     return version
+
+
+def build_unreleased(product: Product) -> tuple[str, int]:
+    entries = list(product.entries.filter(version__isnull=True).order_by("created_at", "id"))
+    notes = [Note(entry.kind, entry.text) for entry in entries]
+    return render_unreleased(product.name, notes), len(notes)
 
 
 def build_changelog(product: Product) -> str:

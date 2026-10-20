@@ -2,7 +2,7 @@ from datetime import date
 
 from django.test import SimpleTestCase
 
-from releases.markdown import KIND_ORDER, Note, VersionBlock, render_changelog
+from releases.markdown import KIND_ORDER, Note, VersionBlock, render_changelog, render_unreleased
 from releases.models import ChangelogEntry
 
 
@@ -94,6 +94,15 @@ class MarkdownTests(SimpleTestCase):
         self.assertIn("Yanked on 2026-10-03: The tag points at the wrong commit", text)
         self.assertIn("- Correct the draft tag", text)
         self.assertLess(text.index("[YANKED]"), text.index("Correct the draft tag"))
+
+    def test_unreleased_preview_omits_cut_versions(self):
+        text = render_unreleased("Harbor", [Note("added", "Queue the public feed")])
+        self.assertIn("# Unreleased changes to Harbor", text)
+        self.assertIn("## [Unreleased]", text)
+        self.assertIn("- Queue the public feed", text)
+        self.assertNotIn("## [1.", text)
+        empty = render_unreleased("Harbor", [])
+        self.assertIn("_Nothing is waiting in the unreleased bucket._", empty)
 
     def test_unknown_kind_is_rejected(self):
         with self.assertRaises(ValueError):
