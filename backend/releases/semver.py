@@ -15,6 +15,9 @@ _VERSION = re.compile(
 )
 
 
+CHANNELS = ("alpha", "beta", "rc")
+
+
 class InvalidVersion(ValueError):
     """A version string or bump request broke semantic versioning rules."""
 
@@ -74,6 +77,39 @@ class SemVer:
                 return SemVer(self.major, self.minor, self.patch)
             return SemVer(self.major, self.minor, self.patch + 1)
         raise InvalidVersion("Bump level must be major, minor, or patch.")
+
+    def advance_channel(self, channel: str) -> SemVer:
+        """Step through alpha, then beta, then rc.
+
+        A stable version opens the channel on the next patch (`1.2.3` becomes
+        `1.2.4-alpha.1`). The same channel increments its number. A later
+        channel replaces the label on the same core. An earlier channel is rejected.
+        """
+        if channel not in CHANNELS:
+            raise InvalidVersion("Pre-release channel must be alpha, beta, or rc.")
+        if not self.prerelease:
+            return SemVer(self.major, self.minor, self.patch + 1, f"{channel}.1")
+
+        parts = self.prerelease.split(".")
+        head = parts[0]
+        rank = {name: index for index, name in enumerate(CHANNELS)}
+        if head not in rank:
+            raise InvalidVersion(
+                f"{self.label} uses a custom pre-release. Cut it with an explicit label instead of a channel bump."
+            )
+        if rank[channel] < rank[head]:
+            raise InvalidVersion(
+                f"Cannot move {self.label} back to {channel}. Channels advance from alpha to beta to rc."
+            )
+        if head == channel and len(parts) == 2 and parts[1].isdigit():
+            return SemVer(self.major, self.minor, self.patch, f"{channel}.{int(parts[1]) + 1}")
+        if head == channel and len(parts) == 1:
+            return SemVer(self.major, self.minor, self.patch, f"{channel}.1")
+        if head == channel:
+            raise InvalidVersion(
+                f"{self.label} is not a numbered {channel} tag. Use an explicit pre-release label to continue it."
+            )
+        return SemVer(self.major, self.minor, self.patch, f"{channel}.1")
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, SemVer):

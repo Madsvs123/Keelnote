@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from releases.semver import InvalidVersion, SemVer, parse
+from releases.semver import CHANNELS, InvalidVersion, SemVer, parse
 
 
 class SemVerTests(SimpleTestCase):
@@ -73,3 +73,34 @@ class SemVerTests(SimpleTestCase):
     def test_label_round_trip(self):
         version = parse("2.4.6-rc.2")
         self.assertEqual(parse(version.label), version)
+
+    def test_channel_order_is_alpha_beta_rc(self):
+        self.assertEqual(CHANNELS, ("alpha", "beta", "rc"))
+
+    def test_stable_version_opens_a_numbered_channel_on_the_next_patch(self):
+        current = parse("1.2.3")
+        self.assertEqual(current.advance_channel("alpha").label, "1.2.4-alpha.1")
+        self.assertEqual(current.advance_channel("beta").label, "1.2.4-beta.1")
+        self.assertEqual(current.advance_channel("rc").label, "1.2.4-rc.1")
+        self.assertEqual(SemVer(0, 0, 0).advance_channel("alpha").label, "0.0.1-alpha.1")
+
+    def test_same_channel_increments_and_later_channels_keep_the_core(self):
+        alpha = parse("1.2.4-alpha.1")
+        self.assertEqual(alpha.advance_channel("alpha").label, "1.2.4-alpha.2")
+        self.assertEqual(alpha.advance_channel("beta").label, "1.2.4-beta.1")
+        beta = parse("1.2.4-beta")
+        self.assertEqual(beta.advance_channel("beta").label, "1.2.4-beta.1")
+        self.assertEqual(parse("1.2.4-beta.1").advance_channel("rc").label, "1.2.4-rc.1")
+        self.assertEqual(parse("1.2.4-rc.1").advance_channel("rc").label, "1.2.4-rc.2")
+
+    def test_channel_cannot_move_backwards_or_continue_a_custom_label(self):
+        with self.assertRaises(InvalidVersion):
+            parse("1.2.4-rc.1").advance_channel("alpha")
+        with self.assertRaises(InvalidVersion):
+            parse("1.2.4-rc.1").advance_channel("beta")
+        with self.assertRaises(InvalidVersion):
+            parse("1.2.4-preview.1").advance_channel("alpha")
+        with self.assertRaises(InvalidVersion):
+            parse("1.2.4-alpha.beta").advance_channel("alpha")
+        with self.assertRaises(InvalidVersion):
+            parse("1.2.3").advance_channel("nightly")
