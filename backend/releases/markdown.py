@@ -28,6 +28,8 @@ class VersionBlock:
     label: str
     released_on: date | None
     notes: tuple[Note, ...] = ()
+    yanked_on: date | None = None
+    yank_reason: str = ""
 
 
 def render_changelog(
@@ -51,8 +53,15 @@ def render_changelog(
     lines.extend(_render_notes(unreleased, "Nothing is waiting in the unreleased bucket."))
     for block in ordered:
         stamp = block.released_on.isoformat() if block.released_on else "draft"
-        lines.append(f"## [{block.label}] - {stamp}")
+        heading = f"## [{block.label}] - {stamp}"
+        if block.yanked_on:
+            heading += " [YANKED]"
+        lines.append(heading)
         lines.append("")
+        if block.yanked_on:
+            reason = " ".join(block.yank_reason.split()) or "No reason recorded."
+            lines.append(f"Yanked on {block.yanked_on.isoformat()}: {reason}")
+            lines.append("")
         lines.extend(_render_notes(block.notes, "No notes were recorded for this version."))
     lines.extend(_link_lines(repository_url, ordered))
     return "\n".join(lines).rstrip() + "\n"

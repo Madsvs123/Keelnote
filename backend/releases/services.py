@@ -135,6 +135,8 @@ def build_changelog(product: Product) -> str:
             version.label,
             version.released_on,
             tuple(by_version.get(version.id, ())),
+            version.yanked_on,
+            version.yank_reason,
         )
         for version in product.versions.all()
     ]

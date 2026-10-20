@@ -76,6 +76,25 @@ class MarkdownTests(SimpleTestCase):
         self.assertIn("[1.3.0]: https://github.com/acme/harbor/releases/tag/v1.3.0", text)
         self.assertNotIn("https://github.com/acme/harbor//", text)
 
+    def test_yanked_version_keeps_its_notes_and_records_the_reason(self):
+        text = render_changelog(
+            "Harbor",
+            [
+                VersionBlock(
+                    "1.2.0",
+                    date(2026, 10, 1),
+                    (Note("fixed", "Correct the draft tag"),),
+                    date(2026, 10, 3),
+                    "The tag points at the wrong commit",
+                )
+            ],
+            [],
+        )
+        self.assertIn("## [1.2.0] - 2026-10-01 [YANKED]", text)
+        self.assertIn("Yanked on 2026-10-03: The tag points at the wrong commit", text)
+        self.assertIn("- Correct the draft tag", text)
+        self.assertLess(text.index("[YANKED]"), text.index("Correct the draft tag"))
+
     def test_unknown_kind_is_rejected(self):
         with self.assertRaises(ValueError):
             render_changelog("Harbor", [], [Note("security", "Tighten a header")])
