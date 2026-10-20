@@ -466,6 +466,28 @@ class ReleaseApiTests(TestCase):
         self.assertTrue(breaking["breaking"])
         self.assertIn("breaking", breaking["reason"].lower())
 
+    def test_export_puts_every_version_in_one_markdown_file(self):
+        product = self.make_product(name="Export")
+        self.add_note(product["id"], "First note")
+        first = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "patch"}, format="json").json()
+        self.publish(first["id"])
+        self.add_note(product["id"], "Second note", "fixed")
+        second = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "minor"}, format="json").json()
+        self.add_note(product["id"], "Still waiting", "changed")
+
+        exported = self.client.get(f"/api/products/{product['id']}/export/")
+        self.assertEqual(exported.status_code, 200, exported.content)
+        self.assertEqual(exported["Content-Type"], "text/markdown; charset=utf-8")
+        self.assertIn('attachment; filename="export-changelog.md"', exported["Content-Disposition"])
+        text = exported.content.decode()
+        self.assertIn("# Export release export", text)
+        self.assertIn("2 versions", text)
+        self.assertLess(text.index("## [0.1.0]"), text.index("## [0.0.1]"))
+        self.assertIn("- First note", text)
+        self.assertIn("- Second note", text)
+        self.assertIn("- Still waiting", text)
+        self.assertEqual(text.count("# Changelog"), 1)
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

@@ -1,4 +1,5 @@
 from django.db import IntegrityError, transaction
+from django.http import HttpResponse
 from django.db.models import Count, Q
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action
@@ -21,6 +22,7 @@ from .serializers import (
 from .services import (
     ReleaseError,
     build_changelog,
+    build_export,
     build_unreleased,
     cut_release,
     publish_version,
@@ -141,6 +143,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         markdown, count = build_unreleased(product)
         return Response({"markdown": markdown, "count": count})
+
+    @action(detail=True, methods=["get"])
+    def export(self, request, pk=None):
+        product = self.get_object()
+        body = build_export(product)
+        response = HttpResponse(body, content_type="text/markdown; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="{product.slug}-changelog.md"'
+        return response
 
     @action(detail=True, methods=["get"])
     def changelog(self, request, pk=None):

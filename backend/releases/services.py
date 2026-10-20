@@ -156,6 +156,24 @@ def build_unreleased(product: Product) -> tuple[str, int]:
     return render_unreleased(product.name, notes), len(notes)
 
 
+def build_export(product: Product) -> str:
+    """One markdown file that contains every version, drafts and yanked releases included."""
+    safe_name = " ".join(product.name.split()) or "this project"
+    count = product.versions.count()
+    noun = "version" if count == 1 else "versions"
+    header = "\n".join(
+        [
+            f"# {safe_name} release export",
+            "",
+            f"This file contains every version recorded for {safe_name} ({count} {noun}), including drafts and yanked releases.",
+            "",
+            "---",
+            "",
+        ]
+    )
+    return header + build_changelog(product)
+
+
 def build_changelog(product: Product) -> str:
     entries = list(product.entries.select_related("version").order_by("created_at", "id"))
     unreleased: list[Note] = []
