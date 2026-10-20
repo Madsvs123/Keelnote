@@ -75,6 +75,7 @@ export function invalidateRelease(queryClient: QueryClient, productId: string, v
     queryClient.invalidateQueries({ queryKey: ["entries", productId] }),
     queryClient.invalidateQueries({ queryKey: ["versions", productId] }),
     queryClient.invalidateQueries({ queryKey: ["changelog", productId] }),
+    queryClient.invalidateQueries({ queryKey: ["compare", productId] }),
   ];
   if (versionId) {
     jobs.push(queryClient.invalidateQueries({ queryKey: ["version", versionId] }));
@@ -94,6 +95,12 @@ export const api = {
       client.get<{ markdown: string }>(`/api/products/${id}/changelog/`).then((response) => response.data.markdown),
     bump: (id: string, body: { level: Level | Channel; prerelease?: string }) =>
       client.post<ReleaseVersion>(`/api/products/${id}/bump/`, body).then((response) => response.data),
+    compare: (id: string, left: string, right: string) =>
+      client
+        .get<{ markdown: string; left: string; right: string }>(`/api/products/${id}/compare/`, {
+          params: { left, right },
+        })
+        .then((response) => response.data),
   },
   versions: {
     list: (productId: string) =>
@@ -110,14 +117,16 @@ export const api = {
       client.patch<ReleaseVersion>(`/api/versions/${id}/checklist/`, body).then((response) => response.data),
     publish: (id: string) =>
       client.post<ReleaseVersion>(`/api/versions/${id}/publish/`).then((response) => response.data),
+    yank: (id: string, reason: string) =>
+      client.post<ReleaseVersion>(`/api/versions/${id}/yank/`, { reason }).then((response) => response.data),
     remove: (id: string) => client.delete(`/api/versions/${id}/`),
   },
   entries: {
-    list: (params: { product: string; bucket?: "unreleased"; version?: string }) =>
+    list: (params: { product: string; bucket?: "unreleased"; version?: string; q?: string }) =>
       client.get<Entry[]>("/api/entries/", { params }).then((response) => response.data),
-    create: (body: { product: number; version?: number | null; kind: Kind; text: string }) =>
+    create: (body: { product: number; version?: number | null; kind: Kind; text: string; breaking?: boolean }) =>
       client.post<Entry>("/api/entries/", body).then((response) => response.data),
-    update: (id: number, body: Partial<{ kind: Kind; text: string }>) =>
+    update: (id: number, body: Partial<{ kind: Kind; text: string; breaking: boolean }>) =>
       client.patch<Entry>(`/api/entries/${id}/`, body).then((response) => response.data),
     remove: (id: number) => client.delete(`/api/entries/${id}/`),
   },

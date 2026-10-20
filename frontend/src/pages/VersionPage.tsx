@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, invalidateRelease } from "../api/client";
 import { ChecklistCard } from "../components/ChecklistCard";
@@ -13,6 +13,7 @@ export function VersionPage() {
   const { productId = "", versionId = "" } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [reason, setReason] = useState("");
   const versionQuery = useQuery({
     queryKey: ["version", versionId],
     queryFn: () => api.versions.get(versionId),
@@ -30,6 +31,13 @@ export function VersionPage() {
     onSuccess: async () => {
       await invalidateRelease(queryClient, productId);
       navigate(`/products/${productId}`);
+    },
+  });
+  const yank = useMutation({
+    mutationFn: () => api.versions.yank(versionId, reason),
+    onSuccess: async () => {
+      setReason("");
+      await invalidateRelease(queryClient, productId, versionId);
     },
   });
 
@@ -61,9 +69,14 @@ export function VersionPage() {
           </p>
           <h1 className="page-title">{version.label}</h1>
           <p className="lede">
-            {version.released_on ? `Published ${formatDay(version.released_on)}` : "Draft, still open for notes."}
+            {version.yanked_on
+              ? `Yanked ${formatDay(version.yanked_on)}. The notes stay on this version.`
+              : version.released_on
+                ? `Published ${formatDay(version.released_on)}`
+                : "Draft, still open for notes."}
           </p>
         </div>
+        {version.yanked_on && <span className="badge badge-yanked">Yanked</span>}
         {!version.released_on && (
           <button
             className="btn btn-danger"
@@ -77,6 +90,35 @@ export function VersionPage() {
         )}
       </header>
       {remove.isError && <p className="error">{errorText(remove.error, "The draft could not be deleted.")}</p>}
+
+      {version.released_on && !version.yanked_on && (
+        <form
+          className="card stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            yank.mutate();
+          }}
+        >
+          <h2>Yank this release</h2>
+          <p className="muted">The version and its notes stay in the log. Say why it should not be used.</p>
+          <label className="field">
+            <span>Reason</span>
+            <input value={reason} onChange={(event) => setReason(event.target.value)} maxLength={280} />
+          </label>
+          {yank.isError && <p className="error">{errorText(yank.error, "This version could not be yanked.")}</p>}
+          <div className="row">
+            <button className="btn btn-danger" type="submit" disabled={yank.isPending || reason.trim().length < 3}>
+              Yank {version.label}
+            </button>
+          </div>
+        </form>
+      )}
+      {version.yanked_on && version.yank_reason && (
+        <p className="card muted">
+          <strong>Yank reason. </strong>
+          {version.yank_reason}
+        </p>
+      )}
 
       <div className="grid-main">
         <div className="stack">

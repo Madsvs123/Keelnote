@@ -21,6 +21,8 @@ export function ProductPage() {
   const queryClient = useQueryClient();
   const [pre, setPre] = useState("");
   const [editing, setEditing] = useState(false);
+  const [leftId, setLeftId] = useState("");
+  const [rightId, setRightId] = useState("");
   const productQuery = useQuery({
     queryKey: ["product", productId],
     queryFn: () => api.products.get(productId),
@@ -36,6 +38,11 @@ export function ProductPage() {
   const changelogQuery = useQuery({
     queryKey: ["changelog", productId],
     queryFn: () => api.products.changelog(productId),
+  });
+  const compareQuery = useQuery({
+    queryKey: ["compare", productId, leftId, rightId],
+    queryFn: () => api.products.compare(productId, leftId, rightId),
+    enabled: Boolean(leftId && rightId && leftId !== rightId),
   });
   const form = useForm<ProductValues>({
     resolver: zodResolver(productSchema),
@@ -207,6 +214,50 @@ export function ProductPage() {
         <MarkdownPanel markdown={changelogQuery.data} pending={changelogQuery.isLoading} />
       </div>
 
+      <section className="card stack">
+        <h2>Compare two versions</h2>
+        <p className="muted">A markdown diff of the notes. Matching notes share a kind, a summary, and the breaking flag.</p>
+        {(versionsQuery.data?.length ?? 0) < 2 && <p className="empty">Cut two versions before comparing them.</p>}
+        {(versionsQuery.data?.length ?? 0) >= 2 && (
+          <div className="compare-grid">
+            <label className="field">
+              <span>Left</span>
+              <select value={leftId} onChange={(event) => setLeftId(event.target.value)}>
+                <option value="">Choose a version</option>
+                {versionsQuery.data?.map((version) => (
+                  <option key={version.id} value={String(version.id)}>
+                    {version.label}
+                    {version.yanked_on ? " (yanked)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Right</span>
+              <select value={rightId} onChange={(event) => setRightId(event.target.value)}>
+                <option value="">Choose a version</option>
+                {versionsQuery.data?.map((version) => (
+                  <option key={version.id} value={String(version.id)}>
+                    {version.label}
+                    {version.yanked_on ? " (yanked)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+        {leftId && leftId === rightId && <p className="error">Choose two different versions.</p>}
+        {compareQuery.isError && <p className="error">{errorText(compareQuery.error, "Those versions could not be compared.")}</p>}
+        {(compareQuery.data || compareQuery.isFetching) && (
+          <MarkdownPanel
+            markdown={compareQuery.data?.markdown}
+            pending={compareQuery.isFetching}
+            title={compareQuery.data ? `Compare ${compareQuery.data.left} and ${compareQuery.data.right}` : "Compare"}
+            filename="compare.md"
+          />
+        )}
+      </section>
+
       <section className="stack">
         <h2>Versions</h2>
         {versionsQuery.data && versionsQuery.data.length === 0 && <p className="empty">No versions cut yet.</p>}
@@ -224,6 +275,7 @@ export function ProductPage() {
                 <span>
                   {done}/3 checklist
                 </span>
+                <span>{version.yanked_on ? "Yanked" : ""}</span>
               </Link>
             );
           })}

@@ -52,9 +52,12 @@ export function NoteList({
                   onSaved={onChanged}
                 />
               ) : (
-                <article key={entry.id} className={`note note-${entry.kind}`}>
+                <article key={entry.id} className={`note note-${entry.kind}${entry.breaking ? " note-breaking" : ""}`}>
                   <div className="note-top">
-                    <p>{entry.text}</p>
+                    <div className="stack">
+                      {entry.breaking && <span className="badge badge-breaking">Breaking</span>}
+                      <p>{entry.text}</p>
+                    </div>
                     <div className="note-actions">
                       <button type="button" className="text-button" onClick={() => setEditing(entry.id)}>
                         <Pencil size={14} />
@@ -95,7 +98,7 @@ function EditNote({
 }) {
   const form = useForm<EntryValues>({
     resolver: zodResolver(entrySchema),
-    defaultValues: { kind: entry.kind, text: entry.text },
+    defaultValues: { kind: entry.kind, text: entry.text, breaking: entry.breaking },
   });
   const mutation = useMutation({
     mutationFn: (values: EntryValues) => api.entries.update(entry.id, values),
@@ -120,6 +123,10 @@ function EditNote({
       <label className="field">
         <span>Note</span>
         <textarea rows={3} {...form.register("text")} />
+      </label>
+      <label className="check-line">
+        <input type="checkbox" {...form.register("breaking")} />
+        <span>Breaking change</span>
       </label>
       {form.formState.errors.text && <p className="error">{form.formState.errors.text.message}</p>}
       {mutation.isError && <p className="error">{errorText(mutation.error, "The note could not be updated.")}</p>}

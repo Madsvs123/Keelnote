@@ -17,7 +17,7 @@ export function EntryForm({
 }) {
   const form = useForm<EntryValues>({
     resolver: zodResolver(entrySchema),
-    defaultValues: { kind: "added", text: "" },
+    defaultValues: { kind: "added", text: "", breaking: false },
   });
   const mutation = useMutation({
     mutationFn: (values: EntryValues) =>
@@ -26,10 +26,11 @@ export function EntryForm({
         version: versionId,
         kind: values.kind,
         text: values.text,
+        breaking: values.breaking,
       }),
     onSuccess: async () => {
       const kind = form.getValues("kind");
-      form.reset({ kind, text: "" });
+      form.reset({ kind, text: "", breaking: false });
       await onSaved();
     },
   });
@@ -52,6 +53,10 @@ export function EntryForm({
           <textarea rows={3} placeholder="What changed, in the maintainer's own words" {...form.register("text")} />
         </label>
       </div>
+      <label className="check-line">
+        <input type="checkbox" {...form.register("breaking")} />
+        <span>Breaking change</span>
+      </label>
       {form.formState.errors.text && <p className="error">{form.formState.errors.text.message}</p>}
       {mutation.isError && <p className="error">{errorText(mutation.error, "The note could not be saved.")}</p>}
       <div className="row">

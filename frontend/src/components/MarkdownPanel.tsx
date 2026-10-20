@@ -1,7 +1,17 @@
 import { Check, ClipboardCopy, Download } from "lucide-react";
 import { useState } from "react";
 
-export function MarkdownPanel({ markdown, pending }: { markdown?: string; pending: boolean }) {
+export function MarkdownPanel({
+  markdown,
+  pending,
+  title = "CHANGELOG.md",
+  filename = "CHANGELOG.md",
+}: {
+  markdown?: string;
+  pending: boolean;
+  title?: string;
+  filename?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
 
@@ -23,7 +33,7 @@ export function MarkdownPanel({ markdown, pending }: { markdown?: string; pendin
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = "CHANGELOG.md";
+    anchor.download = filename;
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -31,7 +41,7 @@ export function MarkdownPanel({ markdown, pending }: { markdown?: string; pendin
   return (
     <section className="markdown">
       <div className="markdown-bar">
-        <strong>CHANGELOG.md</strong>
+        <strong>{title}</strong>
         <div className="row">
           <button className="btn btn-tiny btn-ghost" type="button" onClick={copy} disabled={!markdown}>
             {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}

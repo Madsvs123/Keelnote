@@ -29,6 +29,7 @@ export const productSchema = z.object({
 export const entrySchema = z.object({
   kind: z.enum(["added", "changed", "fixed", "removed"]),
   text: z.string().trim().min(1, "Write a note before saving.").max(2000),
+  breaking: z.boolean(),
 });
 
 export type LoginValues = z.infer<typeof loginSchema>;

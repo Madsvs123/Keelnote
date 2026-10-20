@@ -44,6 +44,8 @@ export type ReleaseVersion = {
   patch: number;
   prerelease: string;
   released_on: string | null;
+  yanked_on: string | null;
+  yank_reason: string;
   checklist: Checklist;
   note_count: number;
   created_at: string;
@@ -56,6 +58,7 @@ export type Entry = {
   version_label: string | null;
   kind: Kind;
   text: string;
+  breaking: boolean;
   created_at: string;
 };
 
