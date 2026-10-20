@@ -3,6 +3,7 @@ from urllib.parse import urlsplit
 from rest_framework import serializers
 
 from .models import ChangelogEntry, Product, ReleaseChecklist, Version
+from .semver import InvalidVersion
 from .services import version_base
 
 
@@ -68,6 +69,7 @@ class ProductWriteSerializer(serializers.ModelSerializer):
 class ProductSerializer(serializers.ModelSerializer):
     latest = serializers.SerializerMethodField()
     next_versions = serializers.SerializerMethodField()
+    next_channels = serializers.SerializerMethodField()
     unreleased_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -80,6 +82,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "repository_url",
             "latest",
             "next_versions",
+            "next_channels",
             "unreleased_count",
             "created_at",
             "updated_at",
@@ -101,6 +104,16 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_next_versions(self, obj: Product):
         _current, base = self._base(obj)
         return {level: base.bump(level).label for level in ("major", "minor", "patch")}
+
+    def get_next_channels(self, obj: Product):
+        _current, base = self._base(obj)
+        labels: dict[str, str | None] = {}
+        for channel in ("alpha", "beta", "rc"):
+            try:
+                labels[channel] = base.advance_channel(channel).label
+            except InvalidVersion:
+                labels[channel] = None
+        return labels
 
 
 class EntrySerializer(serializers.ModelSerializer):

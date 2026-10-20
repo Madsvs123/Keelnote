@@ -37,7 +37,7 @@ For anything beyond this machine, set `DJANGO_SECRET_KEY` and `DJANGO_DEBUG=0`.
 
 1. Create a product.
 2. Add notes to the unreleased bucket. Each note is added, changed, fixed, or removed.
-3. Cut a patch, minor, or major version. Keelnote moves the unreleased notes into that version. You can attach a pre-release label such as `rc.1`.
+3. Cut a patch, minor, or major version, or step a pre-release channel (`alpha`, `beta`, then `rc`). Keelnote moves the unreleased notes into that version. You can still attach an explicit pre-release label such as `rc.1` on a major, minor, or patch cut. A channel bump sets its own numbered label.
 4. Work through the checklist: tests, notes, and tag.
 5. Publish the version. The markdown changelog uses a Keep a Changelog layout, with your notes and Keelnote's own section text.
 

@@ -195,6 +195,46 @@ class ReleaseApiTests(TestCase):
         self.assertIsNone(waiting[0]["version"])
         self.assertEqual(self.client.get("/api/versions/", {"product": product["id"]}).json(), [])
 
+    def test_channel_bumps_advance_alpha_then_beta_then_rc(self):
+        product = self.make_product(name="Channel")
+        self.add_note(product["id"], "Open the alpha")
+        alpha = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "alpha"}, format="json")
+        self.assertEqual(alpha.status_code, 201, alpha.content)
+        self.assertEqual(alpha.json()["label"], "0.0.1-alpha.1")
+        self.assertEqual(alpha.json()["prerelease"], "alpha.1")
+
+        preview = self.client.get(f"/api/products/{product['id']}/").json()
+        self.assertEqual(
+            preview["next_channels"],
+            {"alpha": "0.0.1-alpha.2", "beta": "0.0.1-beta.1", "rc": "0.0.1-rc.1"},
+        )
+
+        self.add_note(product["id"], "Continue the alpha", "changed")
+        again = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "alpha"}, format="json")
+        self.assertEqual(again.status_code, 201, again.content)
+        self.assertEqual(again.json()["label"], "0.0.1-alpha.2")
+
+        self.add_note(product["id"], "Move to beta", "fixed")
+        beta = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "beta"}, format="json")
+        self.assertEqual(beta.status_code, 201, beta.content)
+        self.assertEqual(beta.json()["label"], "0.0.1-beta.1")
+
+        mixed = self.client.post(
+            f"/api/products/{product['id']}/bump/",
+            {"level": "rc", "prerelease": "rc.9"},
+            format="json",
+        )
+        self.assertEqual(mixed.status_code, 400)
+
+        backwards = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "alpha"}, format="json")
+        self.assertEqual(backwards.status_code, 400)
+
+        self.add_note(product["id"], "Candidate", "changed")
+        rc = self.client.post(f"/api/products/{product['id']}/bump/", {"level": "rc"}, format="json")
+        self.assertEqual(rc.status_code, 201, rc.content)
+        self.assertEqual(rc.json()["label"], "0.0.1-rc.1")
+        self.assertEqual(rc.json()["note_count"], 1)
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

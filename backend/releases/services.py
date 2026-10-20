@@ -8,7 +8,7 @@ from django.utils.text import slugify
 
 from .markdown import Note, VersionBlock, render_changelog
 from .models import ChangelogEntry, Product, Version
-from .semver import InvalidVersion, SemVer
+from .semver import CHANNELS, InvalidVersion, SemVer
 
 
 class ReleaseError(Exception):
@@ -60,17 +60,22 @@ def normalize_prerelease(value: str) -> str:
 
 @transaction.atomic
 def cut_release(product: Product, level: str, prerelease: str = "") -> Version:
-    if level not in {"major", "minor", "patch"}:
-        raise ReleaseError("Choose major, minor, or patch.")
+    if level not in {"major", "minor", "patch", *CHANNELS}:
+        raise ReleaseError("Choose major, minor, patch, alpha, beta, or rc.")
     locked = Product.objects.get(pk=product.pk)
     _current, base = version_base(locked)
     try:
-        nxt = base.bump(level)
+        if level in CHANNELS:
+            if prerelease.strip():
+                raise ReleaseError("A channel bump sets its own pre-release label.")
+            nxt = base.advance_channel(level)
+        else:
+            nxt = base.bump(level)
+            pre = normalize_prerelease(prerelease)
+            if pre:
+                nxt = SemVer(nxt.major, nxt.minor, nxt.patch, pre)
     except InvalidVersion as exc:
         raise ReleaseError(str(exc)) from exc
-    pre = normalize_prerelease(prerelease)
-    if pre:
-        nxt = SemVer(nxt.major, nxt.minor, nxt.patch, pre)
     try:
         with transaction.atomic():
             version = Version.objects.create(
