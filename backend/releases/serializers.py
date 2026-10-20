@@ -173,7 +173,7 @@ class EntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChangelogEntry
-        fields = ["id", "product", "version", "version_label", "kind", "text", "created_at"]
+        fields = ["id", "product", "version", "version_label", "kind", "text", "breaking", "created_at"]
 
     def get_version_label(self, obj: ChangelogEntry):
         if obj.version_id is None:
@@ -195,7 +195,7 @@ class EntryWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ChangelogEntry
-        fields = ["product", "version", "kind", "text"]
+        fields = ["product", "version", "kind", "text", "breaking"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

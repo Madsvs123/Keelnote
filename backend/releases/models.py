@@ -75,6 +75,7 @@ class ChangelogEntry(models.Model):
     )
     kind = models.CharField(max_length=16, choices=Kind.choices)
     text = models.TextField()
+    breaking = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

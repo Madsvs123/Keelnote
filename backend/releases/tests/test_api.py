@@ -20,8 +20,14 @@ class ReleaseApiTests(TestCase):
         self.assertEqual(response.status_code, 201, response.content)
         return response.json()
 
-    def add_note(self, product_id, text="Queue the harbor lights", kind="added", version=None):
-        payload = {"product": product_id, "kind": kind, "text": text, "version": version}
+    def add_note(self, product_id, text="Queue the harbor lights", kind="added", version=None, breaking=False):
+        payload = {
+            "product": product_id,
+            "kind": kind,
+            "text": text,
+            "version": version,
+            "breaking": breaking,
+        }
         response = self.client.post("/api/entries/", payload, format="json")
         self.assertEqual(response.status_code, 201, response.content)
         return response.json()
@@ -404,6 +410,17 @@ class ReleaseApiTests(TestCase):
         self.assertEqual(checklist["tag_note"], "Annotated tag v0.0.1")
         self.assertEqual(checklist["notes_note"], "")
         self.assertFalse(checklist["complete"])
+
+    def test_breaking_flag_is_stored_and_rendered(self):
+        product = self.make_product(name="Break")
+        note = self.add_note(product["id"], "Drop the old flag", "changed", breaking=True)
+        self.assertTrue(note["breaking"])
+        quiet = self.add_note(product["id"], "Adjust the wording", "changed")
+        self.assertFalse(quiet["breaking"])
+        preview = self.client.get(f"/api/products/{product['id']}/unreleased/").json()["markdown"]
+        self.assertIn("- **Breaking.** Drop the old flag", preview)
+        self.assertIn("- Adjust the wording", preview)
+        self.assertNotIn("**Breaking.** Adjust", preview)
 
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")

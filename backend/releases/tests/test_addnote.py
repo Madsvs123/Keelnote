@@ -91,3 +91,19 @@ class AddNoteCommandTests(TestCase):
                 "9.9.9",
             )
         self.assertEqual(ChangelogEntry.objects.count(), 0)
+
+    def test_breaking_flag_is_optional(self):
+        call_command(
+            "addnote",
+            "--username",
+            "keeper",
+            "--product",
+            "harbor",
+            "--kind",
+            "removed",
+            "--text",
+            "Remove the legacy export",
+            "--breaking",
+        )
+        entry = ChangelogEntry.objects.get()
+        self.assertTrue(entry.breaking)

@@ -14,6 +14,11 @@ class Command(BaseCommand):
         parser.add_argument("--kind", required=True)
         parser.add_argument("--text", required=True)
         parser.add_argument(
+            "--breaking",
+            action="store_true",
+            help="Mark the note as a breaking change.",
+        )
+        parser.add_argument(
             "--release",
             default="",
             help="Version label such as 1.2.0 or 1.2.0-rc.1. Omit this to leave the note unreleased.",
@@ -62,6 +67,7 @@ class Command(BaseCommand):
             version=version,
             kind=kind,
             text=text,
+            breaking=bool(options["breaking"]),
         )
         where = version.label if version else "unreleased"
         self.stdout.write(f"Added {entry.kind} note {entry.pk} to {slug} ({where}).")

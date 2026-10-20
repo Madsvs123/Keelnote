@@ -55,6 +55,15 @@ class MarkdownTests(SimpleTestCase):
         self.assertLess(body.index("### Fixed"), body.index("### Removed"))
         self.assertIn("- Rewrite the exporter\n  Keep the old flag for one release", body)
 
+    def test_breaking_note_is_marked_in_its_kind_section(self):
+        text = render_changelog(
+            "Harbor",
+            [],
+            [Note("changed", "Drop the old flag\nCallers must pass the new one", True)],
+        )
+        self.assertIn("- **Breaking.** Drop the old flag\n  Callers must pass the new one", text)
+        self.assertIn("### Changed", text)
+
     def test_orders_versions_and_links_the_newest_published_tag(self):
         text = render_changelog(
             "Harbor",

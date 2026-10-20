@@ -122,7 +122,7 @@ def publish_version(version: Version) -> Version:
 
 def build_unreleased(product: Product) -> tuple[str, int]:
     entries = list(product.entries.filter(version__isnull=True).order_by("created_at", "id"))
-    notes = [Note(entry.kind, entry.text) for entry in entries]
+    notes = [Note(entry.kind, entry.text, entry.breaking) for entry in entries]
     return render_unreleased(product.name, notes), len(notes)
 
 
@@ -131,7 +131,7 @@ def build_changelog(product: Product) -> str:
     unreleased: list[Note] = []
     by_version: dict[int, list[Note]] = {}
     for entry in entries:
-        note = Note(entry.kind, entry.text)
+        note = Note(entry.kind, entry.text, entry.breaking)
         if entry.version_id is None:
             unreleased.append(note)
         else:

@@ -21,6 +21,7 @@ KIND_TITLES = {
 class Note:
     kind: str
     text: str
+    breaking: bool = False
 
 
 @dataclass(frozen=True)
@@ -83,13 +84,13 @@ def render_unreleased(product_name: str, notes: Sequence[Note]) -> str:
 
 
 def _render_notes(notes: Sequence[Note], empty: str) -> list[str]:
-    buckets: dict[str, list[str]] = {kind: [] for kind in KIND_ORDER}
+    buckets: dict[str, list[Note]] = {kind: [] for kind in KIND_ORDER}
     for note in notes:
         if note.kind not in buckets:
             raise ValueError(f"Unknown changelog kind: {note.kind}")
         text = note.text.strip()
         if text:
-            buckets[note.kind].append(text)
+            buckets[note.kind].append(Note(note.kind, text, note.breaking))
     if not any(buckets.values()):
         return [f"_{empty}_", ""]
     lines: list[str] = []
@@ -99,7 +100,8 @@ def _render_notes(notes: Sequence[Note], empty: str) -> list[str]:
             continue
         lines.append(f"### {KIND_TITLES[kind]}")
         lines.append("")
-        for text in items:
+        for note in items:
+            text = f"**Breaking.** {note.text}" if note.breaking else note.text
             lines.extend(_bullet_lines(text))
         lines.append("")
     return lines

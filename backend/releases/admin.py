@@ -17,8 +17,8 @@ class VersionAdmin(admin.ModelAdmin):
 
 @admin.register(ChangelogEntry)
 class ChangelogEntryAdmin(admin.ModelAdmin):
-    list_display = ("product", "kind", "version", "created_at")
-    list_filter = ("kind",)
+    list_display = ("product", "kind", "breaking", "version", "created_at")
+    list_filter = ("kind", "breaking")
 
 
 @admin.register(NoteTemplate)
