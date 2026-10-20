@@ -24,6 +24,7 @@ from .services import (
     build_unreleased,
     cut_release,
     publish_version,
+    suggest_next,
     unique_slug,
     yank_version,
 )
@@ -129,6 +130,11 @@ class ProductViewSet(viewsets.ModelViewSet):
             ]
         issues = [issue.as_dict() for issue in lint_notes(notes)]
         return Response({"ok": not issues, "issues": issues})
+
+    @action(detail=True, methods=["get"])
+    def suggest(self, request, pk=None):
+        product = self.get_object()
+        return Response(suggest_next(product))
 
     @action(detail=True, methods=["get"])
     def unreleased(self, request, pk=None):

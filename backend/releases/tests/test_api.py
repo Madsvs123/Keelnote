@@ -438,6 +438,34 @@ class ReleaseApiTests(TestCase):
         stranger.force_authenticate(self.other)
         self.assertEqual(stranger.get("/api/entries/", {"q": "harbor"}).json(), [])
 
+    def test_suggestion_follows_unreleased_kinds(self):
+        product = self.make_product(name="Suggest")
+        empty = self.client.get(f"/api/products/{product['id']}/suggest/")
+        self.assertEqual(empty.status_code, 200, empty.content)
+        self.assertEqual(empty.json()["level"], "patch")
+        self.assertEqual(empty.json()["label"], "0.0.1")
+        self.assertEqual(empty.json()["note_count"], 0)
+        self.assertFalse(empty.json()["breaking"])
+
+        self.add_note(product["id"], "Repair the tag writer", "fixed")
+        self.assertEqual(self.client.get(f"/api/products/{product['id']}/suggest/").json()["level"], "patch")
+
+        self.add_note(product["id"], "Queue the harbor lights", "added")
+        added = self.client.get(f"/api/products/{product['id']}/suggest/").json()
+        self.assertEqual(added["level"], "minor")
+        self.assertEqual(added["label"], "0.1.0")
+
+        self.add_note(product["id"], "Drop the legacy export", "removed")
+        self.assertEqual(self.client.get(f"/api/products/{product['id']}/suggest/").json()["level"], "major")
+
+        self.client.post(f"/api/products/{product['id']}/bump/", {"level": "major"}, format="json")
+        self.add_note(product["id"], "Adjust a default", "fixed", breaking=True)
+        breaking = self.client.get(f"/api/products/{product['id']}/suggest/").json()
+        self.assertEqual(breaking["level"], "major")
+        self.assertEqual(breaking["label"], "2.0.0")
+        self.assertTrue(breaking["breaking"])
+        self.assertIn("breaking", breaking["reason"].lower())
+
     def test_other_maintainer_cannot_see_the_log(self):
         product = self.make_product(name="Private")
         self.add_note(product["id"], "Mine alone")

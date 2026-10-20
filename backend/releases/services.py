@@ -120,6 +120,36 @@ def publish_version(version: Version) -> Version:
     return version
 
 
+def suggest_next(product: Product) -> dict:
+    """Pick the next stable bump from the kinds waiting in unreleased."""
+    entries = list(product.entries.filter(version__isnull=True))
+    kinds = {entry.kind for entry in entries}
+    breaking = any(entry.breaking for entry in entries)
+    if breaking:
+        level = "major"
+        reason = "A breaking change calls for a major version."
+    elif "removed" in kinds:
+        level = "major"
+        reason = "A removal calls for a major version."
+    elif "added" in kinds or "changed" in kinds:
+        level = "minor"
+        reason = "Added or changed behavior calls for a minor version."
+    elif "fixed" in kinds:
+        level = "patch"
+        reason = "Fixes alone call for a patch version."
+    else:
+        level = "patch"
+        reason = "No unreleased notes yet. A patch is the smallest next cut."
+    _current, base = version_base(product)
+    return {
+        "level": level,
+        "label": base.bump(level).label,
+        "reason": reason,
+        "note_count": len(entries),
+        "breaking": breaking,
+    }
+
+
 def build_unreleased(product: Product) -> tuple[str, int]:
     entries = list(product.entries.filter(version__isnull=True).order_by("created_at", "id"))
     notes = [Note(entry.kind, entry.text, entry.breaking) for entry in entries]
